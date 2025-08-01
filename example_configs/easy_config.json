@@ -1,0 +1,50 @@
+{
+    "__comments":"types: string, integer, float, array, dictionairy, boolean, date, ",
+    "collections": [
+        {
+            "name":"users",
+            "fields":[
+                {
+                    "name":"username",
+                    "type":["string"]
+                },
+                {
+                    "name":"passwordHash",
+                    "type":["string"]
+                },
+                {
+                    "name":"organization",
+                    "type":["string"]
+                },
+                {
+                    "name":"name",
+                    "type":["string"]
+                },
+                {
+                    "name":"age",
+                    "type":["integer"]
+                },
+                {
+                    "name":"dateOfBirth",
+                    "type":["date"]
+                },
+                {
+                    "name":"alive",
+                    "type":["boolean"]
+                },
+                {
+                    "name":"kidNames",
+                    "type":["array"]
+                },
+                {
+                    "name":"incomePerHour",
+                    "type":["float"]
+                },
+                {
+                    "name":"placeOfBirth",
+                    "type":["json"]
+                }
+            ]
+        }
+    ]
+}

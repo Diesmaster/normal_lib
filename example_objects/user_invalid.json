@@ -1,0 +1,18 @@
+{
+  "username": "qifa_r",
+  "passwordHash": "$2b$12$abcdefghijk1234567890saltedhashvalue",
+  "organization": "SkateRevive Collective",
+  "name": "Qifa Nirwana",
+  "age": 20,
+  "dateOfBirth": "2005-06-15T00:00:00Z",
+  "alive": true,
+  "kidNames": ["Zafa", "Zara"],
+  "incomePerHour": 125000.75,
+  "placeOfBirth": {
+    "country": "Indonesia",
+    "city": "Jakarta",
+    "hospital": "RS Bunda Menteng"
+  },
+  "error":"Here boss"
+}
+
