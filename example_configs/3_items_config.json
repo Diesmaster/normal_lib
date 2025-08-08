@@ -69,14 +69,18 @@
                     "name":"ownedByUsername",
                     "type":["string"],
                     "link":["users.username"],
-                    "idRef":["ownedByDocId"]
+                    "idRef":["ownedByDocId"],
+                    "independed":true,
+                    "origin":false
 
                 },
                 {
                     "name":"ownedByFullname",
                     "type":["string"],
                     "link":["users.name"],
-                    "idRef":["ownedByDocId"]
+                    "idRef":["ownedByDocId"],
+                    "independed":true,
+                    "origin":false
                 },
                 {
                     "name":"ownedByDocId",

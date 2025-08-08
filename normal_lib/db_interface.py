@@ -26,6 +26,12 @@ class DBInterface:
         """
         return self.db.add_element_to_array(collection_name, doc_id, array_field, element, unique)
 
+    def remove_element_from_array(self, collection_name, doc_id, array_field, element):
+        """
+        Remove an element from an array field in a document.
+        """
+        return self.db.remove_element_from_array(collection_name, doc_id, array_field, element)
+
     def _get_collection_config(self, collection_name):
         for collection in self.config.get("collections", []):
             if collection.get("name") == collection_name:

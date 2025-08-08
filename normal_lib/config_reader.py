@@ -68,6 +68,13 @@ class ConfigReader:
                         if my_link not in ret_config[col]['fields'][attr]['link']:
                             ret_config[col]['fields'][attr]['link'].append(my_link)
                             ret_config[col]['fields'][attr]['idRef'].append(refId) 
+                            
+                            if not 'indpended' in ret_config[col]['fields'][attr]:
+                                ret_config[col]['fields'][attr]['indpended'] = True
+    
+                            if not 'origin' in ret_config[col]['fields'][attr]:
+                                ret_config[col]['fields'][attr]['origin'] = True
+
 
                 elif ('link' in config[key]['fields'][field]) ^ ('idRef' in config[key]['fields'][field]):
                     raise ValueError(f"Only link or refId present in field: {field}, in collection: {key}")

@@ -85,4 +85,15 @@ if __name__ == "__main__":
     print("\n📄 Inserted house document:")
     print(normalizer.get("houses", {"_id": ObjectId(house_id)}))
 
+    #try:
+    normalizer.gen_delete("users", user_id) 
+    #except Exception as e:
+    #    print(f"err: {e}")
+
+    print("\n📄 deleted user document:")
+    print(normalizer.get("users", {"_id": ObjectId(user_id)}))
+
+    print("\n📄 deleted house document:")
+    print(normalizer.get("houses", {"_id": ObjectId(house_id)}))
+
 

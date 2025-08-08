@@ -78,11 +78,7 @@ class Normalizer:
 
                 ref_doc_id = document[ref_attr]
 
-                print(f"what? {Config.docIdAttrName}")
-
                 array_field = f"{collection_name}{Config.docIdAttrName}"
-                
-                print(f"arr field: {array_field}")
 
                 unique = True
 
@@ -126,15 +122,121 @@ class Normalizer:
 
                         gathered_updates[linked_coll][target_doc_id][target_field] = value 
 
-
-                    ## the updated field is normalized
-        
-
-        print(gathered_updates)
-
         for col in gathered_updates:
             for target_doc_id in gathered_updates[col]:
                 res.append(self.modify(col, target_doc_id, gathered_updates[col][target_doc_id]))
+
+        return res
+
+    def gen_delete(self, collection_name, doc_id):
+        ## when to remove ref
+        ## when to delete doc that refs?
+
+        ## if independed == True remove the data 
+        ## if independed == False remove the doc
+
+        doc = {}
+        updates = {}
+        deletes = {}
+        all_links = {}
+
+
+        for field in self.config[collection_name]['fields']:
+            if 'link' in self.config[collection_name]['fields'][field] and 'idRef' in self.config[collection_name]['fields'][field] and 'origin' in self.config[collection_name]['fields'][field]:                
+                
+                
+                if doc == {}:
+                    doc = self.get_by_id(collection_name, doc_id)[0]
+
+ 
+                for i in range(0, len(self.config[collection_name]['fields'][field]['link'])): 
+                    link = self.config[collection_name]['fields'][field]['link'][i]
+                    idRef = self.config[collection_name]['fields'][field]['idRef'][i]
+                         
+                    linked_coll = self.substring_until_dot(link)
+                    target_field = self.substring_from_dot(link)
+
+                    if not linked_coll in all_links:
+                        all_links[linked_coll] = {}
+
+                    if not idRef in all_links[linked_coll]:
+                        all_links[linked_coll][idRef] = True
+
+
+                    if self.config[collection_name]['fields'][field]['origin'] == False:
+                        continue
+
+                    if not linked_coll in updates:
+                        updates[linked_coll] = {}
+
+
+
+                    if self.config[linked_coll]['fields'][target_field]['independed'] == True:
+                        
+                        if not linked_coll in updates:
+                            updates[linked_coll] = {}
+
+                        target_doc_ids = doc[idRef]
+
+                        for target_doc_id in target_doc_ids:
+                            if not target_doc_id in updates[linked_coll]:            
+                                updates[linked_coll][target_doc_id] = {}
+
+                            #if not isinstance(updates[linked_coll][target_doc_id][target_field], List):
+                            updates[linked_coll][target_doc_id][target_field] = None
+                            ref_fields = self.config[linked_coll]['fields'][target_field]['idRef']     
+                            for ref_field in ref_fields:
+                                updates[linked_coll][target_doc_id][ref_field] = None
+                            
+
+
+                            #elif isinstance(updates[linked_coll][target_doc_id][target_field], List):
+                            #    pass
+                            ## we need to remove things from the List
+   
+
+
+                    elif self.config[linked_coll]['fields'][target_field]['independed'] == False:
+                        
+                        target_doc_ids = doc[idRef]
+                        if not linked_coll in deletes:
+                            deletes[linked_coll] = {}
+
+
+                        for target_doc_id in target_doc_ids:
+                            deletes[linked_coll][target_doc_id] = True
+
+                    else:    
+                        return "exception TODO"   
+
+        res = []
+
+        for col in updates:
+            for target_doc_id in updates[col]:
+                res.append(self.modify(col, target_doc_id, updates[col][target_doc_id]))
+
+
+        for col in deletes:
+            for target_doc_id in deletes[col]:
+                if deletes[col][target_doc_id] == True:
+                    res.append(self.delete(col, target_doc_id))
+
+        auto_key = f"{collection_name}{Config.docIdAttrName}"
+
+        for col in all_links:
+            ids = set()
+
+            for ref_id in all_links[col]:
+                if isinstance(doc[ref_id], list):
+                    for target_doc_id in doc[ref_id]:
+                        ids.add(target_doc_id)
+                else:
+                    ids.add(doc[ref_id])
+
+            for target_doc_id in ids:
+                res.append(self.remove_element_from_array(col, target_doc_id, auto_key, doc_id))
+
+        res.append(self.delete(collection_name, doc_id))
 
         return res
 
@@ -156,6 +258,12 @@ class Normalizer:
         If unique=True, no duplicates will be added.
         """
         return self.interface.add_element_to_array(collection_name, doc_id, array_field, element, unique)
+
+    def remove_element_from_array(self, collection_name, doc_id, array_field, element):
+        """
+        Remove an element from an array field in a document.
+        """
+        return self.interface.remove_element_from_array(collection_name, doc_id, array_field, element)
 
 
     def get_by_id(self, collection_name, doc_id):                           

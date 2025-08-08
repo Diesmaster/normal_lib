@@ -45,6 +45,28 @@ class MongoDriver:
         result = collection.update_one({"_id": oid}, op)
         return result.modified_count > 0
 
+    def remove_element_from_array(
+        self,
+        collection_name: str,
+        doc_id: str,
+        array_field: str,
+        element
+    ) -> bool:
+        """
+        Removes an element from an array field in a document.
+        Returns True if the document was modified.
+        """
+        collection = self.db[collection_name]
+        oid = ObjectId(doc_id)
+
+        # Only try to pull if the field is a list
+        doc = collection.find_one({"_id": oid}, {array_field: 1})
+        if not doc or not isinstance(doc.get(array_field), list):
+            return False  # No change because it's not an array
+
+        result = collection.update_one({"_id": oid}, {"$pull": {array_field: element}})
+        return result.modified_count > 0
+
     def get(self, collection_name, query=None):
         """
         Retrieve documents from a collection. Defaults to all documents.
