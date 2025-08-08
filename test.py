@@ -1,4 +1,5 @@
 import json
+from bson.objectid import ObjectId
 from normal_lib.config_reader import ConfigReader
 from normal_lib.validator import Validator, ValidationError
 from normal_lib.db_drivers.mongo_driver import MongoDriver
@@ -6,7 +7,7 @@ from normal_lib.normalizer import Normalizer
 
 if __name__ == "__main__":
     # Load the config
-    reader = ConfigReader("example_configs/easy_config.json")
+    reader = ConfigReader("example_configs/3_items_config.json")
 
     print("🔍 Full Config:")
     config = reader.get_config()
@@ -20,6 +21,11 @@ if __name__ == "__main__":
     with open("example_objects/user.json", "r", encoding="utf-8") as f:
         user_data = json.load(f)
 
+    # Load user data from JSON file
+    with open("example_objects/house.json", "r", encoding="utf-8") as f:
+        house_data = json.load(f)
+
+
     # Validate the user document manually (optional pre-check)
     try:
         validator.validate(user_data)
@@ -30,7 +36,7 @@ if __name__ == "__main__":
 
     print("\n🚀 Initializing Normalizer...")
     db = MongoDriver(db_name="testdb")
-    normalizer = Normalizer(db_driver=db, config_path="example_configs/easy_config.json")
+    normalizer = Normalizer(db_driver=db, config_path="example_configs/3_items_config.json")
 
     print("\n📦 ClassFuncs per collection:")
     class_map = normalizer.get_classes()
@@ -40,11 +46,43 @@ if __name__ == "__main__":
 
     print("\n➕ Attempting to insert user via ClassFuncs...")
 
+    user_id = ""
+    house_id = ""
+
+     
     try:
         users_class = class_map["users"]
-        doc_id = users_class.add(user_data)
-        print(f"✅ Inserted user with ID: {doc_id}")
+        user_id = users_class.add(user_data)
+        print(f"✅ Inserted user with ID: {user_id}")
     except Exception as e:
         print("❌ Failed to insert user:")
         print(e)
+
+
+    try:
+        users_class = class_map["houses"]
+        house_data['ownedByDocId'] = user_id 
+        house_id = normalizer.gen_add("houses", house_data)  
+        print(f"✅ Inserted user with ID: {house_id}")
+    except Exception as e:
+        print("❌ Failed to insert house:")
+        print(e)
+
+    print("\n📄 Inserted user document:")
+    print(normalizer.get("users", {"_id": ObjectId(user_id)}))
+
+    print("\n📄 Inserted house document:")
+    print(normalizer.get("houses", {"_id": ObjectId(house_id)}))
+
+
+    updates = {"username":"Chris"}
+
+    normalizer.gen_modify("users", user_id, updates)
+
+    print("\n📄 Inserted user document:")
+    print(normalizer.get("users", {"_id": ObjectId(user_id)}))
+
+    print("\n📄 Inserted house document:")
+    print(normalizer.get("houses", {"_id": ObjectId(house_id)}))
+
 

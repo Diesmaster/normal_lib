@@ -18,9 +18,20 @@ class DBInterface:
     def modify(self, collection_name, doc_id, updates: dict):
         return self.db.modify(collection_name, doc_id, updates)
 
+    def add_element_to_array(self, collection_name, doc_id, array_field, element, unique: bool = False):
+        """
+        Add an element to an array field in a document.
+
+        If unique=True, no duplicates will be added.
+        """
+        return self.db.add_element_to_array(collection_name, doc_id, array_field, element, unique)
+
     def _get_collection_config(self, collection_name):
         for collection in self.config.get("collections", []):
             if collection.get("name") == collection_name:
                 return collection.get("fields", [])
         raise ValueError(f"Collection '{collection_name}' not found in config")
+
+    def get(self, collection_name, query=None):
+        return self.db.get(collection_name, query)
 

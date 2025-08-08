@@ -1,4 +1,6 @@
 from datetime import datetime
+from types import NoneType 
+
 
 class ValidationError(Exception):
     pass
@@ -13,7 +15,8 @@ class Validator:
         "date": str,  # we'll validate ISO 8601 manually
         "dictionairy": dict,
         "json": dict,
-        "*": object
+        "*": object,
+        "none": NoneType
     }
 
     def __init__(self, collection_config):

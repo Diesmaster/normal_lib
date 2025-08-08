@@ -8,6 +8,7 @@
   "alive": true,
   "kidNames": ["Zafa", "Zara"],
   "incomePerHour": 125000.75,
+  "housesDocIds":null,
   "placeOfBirth": {
     "country": "Indonesia",
     "city": "Jakarta",

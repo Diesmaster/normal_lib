@@ -1,6 +1,8 @@
 from normal_lib.config_reader import ConfigReader
 from normal_lib.db_interface import DBInterface
 from normal_lib.class_funcs import ClassFuncs
+from normal_lib.config import Config 
+from bson.objectid import ObjectId
 
 
 class Normalizer:
@@ -9,17 +11,26 @@ class Normalizer:
         db_driver: MongoDB instance or similar
         config_path: path to a .json config file
         """
+        self.ref_dict = {}
         self.config_reader = ConfigReader(config_path)
         self.config = self.config_reader.get_config()
+        print(f"conv: {self.config}")
+
         self.interface = DBInterface(db_driver, self.config)
         self._collection_classes = self._init_class_funcs()
+        self.create_adds()
+
+
+    def substring_until_dot(self, s: str) -> str:
+        return s.split('.', 1)[0]
+
+    def substring_from_dot(self, s: str) -> str:
+        return s.split('.', 1)[1]
+
 
     def _init_class_funcs(self):
         result = {}
-        print(self.config)
         for col_name in self.config.keys():
-            print(f"col: {col_name}")
-            #name = self.config.get(col_name)
             result[col_name] = ClassFuncs(
                 db_interface=self.interface,
                 config=self.config,
@@ -33,6 +44,101 @@ class Normalizer:
         """
         return self._collection_classes
 
+    
+    def create_adds(self):
+        for coll in self.config:
+            this_coll_refs = {}
+            for attr in self.config[coll]['fields']:
+                if 'link' in self.config[coll]['fields'][attr]:
+                    for link in self.config[coll]['fields'][attr]['link']:
+                        linkedCol = self.substring_until_dot(link)
+
+                        refs = [
+                            ref
+                            for ref in self.config[coll]['fields'][attr]['idRef']
+                            if not ref.endswith(f".{Config.docIdAttrName}")
+                        ]
+
+                        if not linkedCol in this_coll_refs and not len(refs) == 0:
+                            this_coll_refs[linkedCol] = refs 
+
+            self.ref_dict[coll] = {}
+            self.ref_dict[coll] = this_coll_refs 
+
+
+            print(f"final col links: {this_coll_refs}")
+
+       
+    def gen_add(self,  collection_name, document):
+        doc_id = self.add(collection_name, document)
+        
+        for ref_key in self.ref_dict[collection_name]:
+           
+            for ref_attr in self.ref_dict[collection_name][ref_key]:
+
+                ref_doc_id = document[ref_attr]
+
+                print(f"what? {Config.docIdAttrName}")
+
+                array_field = f"{collection_name}{Config.docIdAttrName}"
+                
+                print(f"arr field: {array_field}")
+
+                unique = True
+
+                self.add_element_to_array(ref_key, ref_doc_id, array_field, doc_id, unique)
+                
+        return doc_id       
+
+    def gen_modify(self, collection_name, doc_id, updates):
+
+        res = self.modify(collection_name, doc_id, updates)
+       
+        res = [res]
+
+        gathered_updates = {}
+
+        doc = {}
+
+        for field in updates:
+            if 'link' in self.config[collection_name]['fields'][field] and 'idRef' in self.config[collection_name]['fields'][field]:
+                
+                if doc == {}:
+                    doc = self.get_by_id(collection_name, doc_id)[0]
+
+                for i in range(0, len(self.config[collection_name]['fields'][field]['link'])): 
+                    link = self.config[collection_name]['fields'][field]['link'][i]
+                    idRef = self.config[collection_name]['fields'][field]['idRef'][i]
+                    
+                    linked_coll = self.substring_until_dot(link)
+
+                    if not linked_coll in gathered_updates:
+                        gathered_updates[linked_coll] = {}
+
+                    target_field = self.substring_from_dot(link)
+                    value = updates[field]
+
+                    target_doc_ids = doc[idRef]
+
+                    for target_doc_id in target_doc_ids:
+                        if not target_doc_id in gathered_updates[linked_coll]:            
+                            gathered_updates[linked_coll][target_doc_id] = {}
+
+                        gathered_updates[linked_coll][target_doc_id][target_field] = value 
+
+
+                    ## the updated field is normalized
+        
+
+        print(gathered_updates)
+
+        for col in gathered_updates:
+            for target_doc_id in gathered_updates[col]:
+                res.append(self.modify(col, target_doc_id, gathered_updates[col][target_doc_id]))
+
+        return res
+
+
     def add(self, collection_name, document):
         return self.interface.add(collection_name, document)
 
@@ -41,4 +147,20 @@ class Normalizer:
 
     def modify(self, collection_name, doc_id, updates):
         return self.interface.modify(collection_name, doc_id, updates)
+
+
+    def add_element_to_array(self, collection_name, doc_id, array_field, element, unique: bool = False):
+        """
+        Add an element to an array field in a document.
+
+        If unique=True, no duplicates will be added.
+        """
+        return self.interface.add_element_to_array(collection_name, doc_id, array_field, element, unique)
+
+
+    def get_by_id(self, collection_name, doc_id):                           
+        return self.get(collection_name, {"_id": ObjectId(doc_id)})
+
+    def get(self, collection_name, query=None):
+        return self.interface.get(collection_name, query)
 
