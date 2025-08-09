@@ -6,11 +6,16 @@ class MongoDriver:
         self.client = MongoClient(uri)
         self.db = self.client[db_name]
 
-    def add(self, collection_name, document):
+    def add(self, collection_name, document, doc_id=None):
         collection = self.db[collection_name]
+
+        # If a custom doc_id is provided, store it explicitly
+        if doc_id is not None:
+            document["_id"] = ObjectId(doc_id) if ObjectId.is_valid(str(doc_id)) else str(doc_id)
+
         result = collection.insert_one(document)
         return str(result.inserted_id)
-
+    
     def delete(self, collection_name, doc_id):
         collection = self.db[collection_name]
         result = collection.delete_one({"_id": ObjectId(doc_id)})

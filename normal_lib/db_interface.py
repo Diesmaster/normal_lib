@@ -9,8 +9,8 @@ class DBInterface:
         self.db = db_impl
         self.config = config
 
-    def add(self, collection_name, document):
-        return self.db.add(collection_name, document)
+    def add(self, collection_name, document, doc_id=None):
+        return self.db.add(collection_name, document, doc_id)
 
     def delete(self, collection_name, doc_id):
         return self.db.delete(collection_name, doc_id)

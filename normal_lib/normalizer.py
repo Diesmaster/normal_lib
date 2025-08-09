@@ -69,14 +69,24 @@ class Normalizer:
             print(f"final col links: {this_coll_refs}")
 
        
-    def gen_add(self,  collection_name, document):
-        doc_id = self.add(collection_name, document)
-        
+    def gen_add(self,  collection_name, document, doc_id=None):
+        doc_id = self.add(collection_name, document, doc_id)
+       
+        print("gen add is being called")
+        print(f"ref dict: {self.ref_dict}")
+
+
         for ref_key in self.ref_dict[collection_name]:
-           
+            
+
             for ref_attr in self.ref_dict[collection_name][ref_key]:
 
+                print("we get here")
+
+
                 ref_doc_id = document[ref_attr]
+
+                print(f"ref docid: {ref_doc_id}")
 
                 array_field = f"{collection_name}{Config.docIdAttrName}"
 
@@ -241,8 +251,8 @@ class Normalizer:
         return res
 
 
-    def add(self, collection_name, document):
-        return self.interface.add(collection_name, document)
+    def add(self, collection_name, document, doc_id=None):
+        return self.interface.add(collection_name, document, doc_id)
 
     def delete(self, collection_name, doc_id):
         return self.interface.delete(collection_name, doc_id)
