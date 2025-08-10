@@ -279,3 +279,19 @@ class Normalizer:
     def get(self, collection_name, query=None):
         return self.interface.get(collection_name, query)
 
+    def get_by_id(self, collection_name, doc_id):
+        """
+        Retrieve a single document by its _id.
+        """
+        return self.interface.get_by_id(collection_name, doc_id)
+
+    def get_flat_tree(self, collection_name, root_id, children_field, include_root=True):
+        """
+        Retrieve a flat list of documents starting from root_id following the children_field.
+        """
+        return self.interface.get_flat_tree(
+            collection_name=collection_name,
+            root_id=root_id,
+            children_field=children_field,
+            include_root=include_root
+        )

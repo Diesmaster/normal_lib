@@ -41,3 +41,21 @@ class DBInterface:
     def get(self, collection_name, query=None):
         return self.db.get(collection_name, query)
 
+    def get_by_id(self, collection_name, doc_id):
+        """
+        Retrieve a single document by its _id.
+        """
+        return self.db.get_by_id(collection_name, doc_id)
+
+    def get_flat_tree(self, collection_name, root_id, children_field, include_root=True):
+        """
+        Retrieve a flat list of the root and all descendants from a tree structure,
+        walking only by the `children_field`.
+        """
+        return self.db.get_tree_flat(
+            collection_name=collection_name,
+            root_id=root_id,
+            children_field=children_field,
+            include_root=include_root
+        )
+
