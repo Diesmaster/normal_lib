@@ -56,7 +56,7 @@ class Normalizer:
                         refs = [
                             ref
                             for ref in self.config[coll]['fields'][attr]['idRef']
-                            if not ref.endswith(f".{Config.docIdAttrName}")
+                            if not ref.endswith(f"{Config.docIdAttrName}")
                         ]
 
                         if not linkedCol in this_coll_refs and not len(refs) == 0:
@@ -66,34 +66,31 @@ class Normalizer:
             self.ref_dict[coll] = this_coll_refs 
 
 
-            print(f"final col links: {this_coll_refs}")
 
        
     def gen_add(self,  collection_name, document, doc_id=None):
         doc_id = self.add(collection_name, document, doc_id)
        
-        print("gen add is being called")
-        print(f"ref dict: {self.ref_dict}")
-
-
         for ref_key in self.ref_dict[collection_name]:
             
 
             for ref_attr in self.ref_dict[collection_name][ref_key]:
 
-                print("we get here")
-
 
                 ref_doc_id = document[ref_attr]
 
-                print(f"ref docid: {ref_doc_id}")
 
                 array_field = f"{collection_name}{Config.docIdAttrName}"
 
                 unique = True
-
-                self.add_element_to_array(ref_key, ref_doc_id, array_field, doc_id, unique)
                 
+                if not isinstance(ref_doc_id, list):
+                    self.add_element_to_array(ref_key, ref_doc_id, array_field, doc_id, unique)
+                else:
+                    for el_ref_doc_id in ref_doc_id:
+                        res = self.add_element_to_array(ref_key, el_ref_doc_id, array_field, doc_id, unique)
+
+
         return doc_id       
 
     def gen_modify(self, collection_name, doc_id, updates):

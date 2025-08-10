@@ -18,13 +18,13 @@ class DBInterface:
     def modify(self, collection_name, doc_id, updates: dict):
         return self.db.modify(collection_name, doc_id, updates)
 
-    def add_element_to_array(self, collection_name, doc_id, array_field, element, unique: bool = False):
+    def add_element_to_array(self, collection_name, doc_id, array_field, element,  unique: bool = False):
         """
         Add an element to an array field in a document.
 
         If unique=True, no duplicates will be added.
         """
-        return self.db.add_element_to_array(collection_name, doc_id, array_field, element, unique)
+        return self.db.add_element_to_array(collection_name, doc_id, array_field, element,  unique)
 
     def remove_element_from_array(self, collection_name, doc_id, array_field, element):
         """

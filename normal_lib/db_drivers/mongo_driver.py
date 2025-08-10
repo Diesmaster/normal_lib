@@ -37,13 +37,19 @@ class MongoDriver:
         element,
         unique: bool = False
     ) -> bool:
+
+
         collection = self.db[collection_name]
-        oid = ObjectId(doc_id)
+        
+        oid = ObjectId(doc_id) if ObjectId.is_valid(str(doc_id)) else str(doc_id)
 
         # 1) Ensure the field is an array (initialize to [] if missing/null/non-array)
-        doc = collection.find_one({"_id": oid}, {array_field: 1})
+        doc = collection.find_one({"_id": oid}) #, {array_field: 1}
+
         if not doc or not isinstance(doc.get(array_field), list):
             collection.update_one({"_id": oid}, {"$set": {array_field: []}})
+
+        
 
         # 2) Now safely add the element
         op = {"$addToSet": {array_field: element}} if unique else {"$push": {array_field: element}}
@@ -62,7 +68,7 @@ class MongoDriver:
         Returns True if the document was modified.
         """
         collection = self.db[collection_name]
-        oid = ObjectId(doc_id)
+        oid = ObjectId(doc_id) if ObjectId.is_valid(str(doc_id)) else str(doc_id)
 
         # Only try to pull if the field is a list
         doc = collection.find_one({"_id": oid}, {array_field: 1})
