@@ -1,9 +1,10 @@
 from datetime import datetime
-from types import NoneType 
+from types import NoneType
 
 
 class ValidationError(Exception):
     pass
+
 
 class Validator:
     TYPE_MAPPING = {
@@ -12,27 +13,20 @@ class Validator:
         "float": float,
         "boolean": bool,
         "array": list,
-        "date": str,  # we'll validate ISO 8601 manually
+        "date": str,
         "dictionairy": dict,
         "json": dict,
         "*": object,
-        "none": NoneType
+        "none": NoneType,
     }
 
     def __init__(self, collection_config):
-        """
-        collection_config = {
-            "fields": [ {...}, {...} ] OR { "fieldname": {...}, ... }
-        }
-        """
         raw_fields = collection_config["fields"]
 
         if isinstance(raw_fields, dict):
-            # dict format
             self.fields_dict = raw_fields
             self.fields = [{"name": name, **details} for name, details in raw_fields.items()]
         else:
-            # list format
             self.fields = raw_fields
             self.fields_dict = {field["name"]: field for field in raw_fields}
 
@@ -50,7 +44,7 @@ class Validator:
         for key in doc_keys - expected_keys:
             errors.append(f"Unexpected field: '{key}' is not defined in schema")
 
-        # Type checks
+        # Type and nested checks
         for name, field in self.fields_dict.items():
             if name not in document:
                 continue
@@ -62,6 +56,25 @@ class Validator:
                 errors.append(
                     f"Invalid type for field '{name}': expected {expected_types}, got {type(value).__name__}"
                 )
+                continue
+
+            # Nested dict validation
+            if isinstance(value, dict) and "fields" in field:
+                try:
+                    Validator({"fields": field["fields"]}).validate(value)
+                except ValidationError as e:
+                    errors.append(f"In field '{name}':\n" + str(e))
+
+            # Array of nested dicts validation
+            if isinstance(value, list) and "fields" in field:
+                for idx, item in enumerate(value):
+                    if not isinstance(item, dict):
+                        errors.append(f"In field '{name}[{idx}]': Expected dict, got {type(item).__name__}")
+                        continue
+                    try:
+                        Validator({"fields": field["fields"]}).validate(item)
+                    except ValidationError as e:
+                        errors.append(f"In field '{name}[{idx}]':\n" + str(e))
 
         if errors:
             raise ValidationError("\n".join(errors))
