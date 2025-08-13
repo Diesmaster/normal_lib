@@ -42,9 +42,13 @@ class ConfigReader:
             raise ValueError("Both collection and attribute must be provided.")
         return f"{collection}.{attribute}"
 
-    def generate_refId(self, coll):
-        return f"{coll}{self.docIdAttrName}"
+    def generate_refId(self, coll, config):
+        if not 'docId' in config[coll]:
+            return f"{coll}{self.docIdAttrName}"
+        else:
+            target_coll, attribute = self.parse_string_link(config[coll]['docId'])
 
+            return attribute
 
     def compile_refs(self, config):
 
@@ -54,7 +58,7 @@ class ConfigReader:
             for field in config[key]['fields']:
                 if 'link' in config[key]['fields'][field] and 'idRef' in config[key]['fields'][field]:
                     my_link = self.generate_string_link(key, field)
-                    refId = self.generate_refId(key)
+                    refId = self.generate_refId(key, config)
 
                     for link in config[key]['fields'][field]['link']:
                         col, attr = self.parse_string_link(link)

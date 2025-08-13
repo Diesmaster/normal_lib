@@ -77,15 +77,19 @@ if __name__ == "__main__":
     print("\n auto my houses:")
     print(normalizer.get("myHouses", {"_id":ObjectId(user_id)}))
 
-    updates = {"username":"Chris"}
+    updates = {"address":"Den Haag, Jl. Raya, 1"}
 
-    normalizer.gen_modify("users", user_id, updates)
+    normalizer.gen_modify("houses", house_id, updates)
 
     print("\n📄 Inserted user document:")
     print(normalizer.get("users", {"_id": ObjectId(user_id)}))
 
     print("\n📄 Inserted house document:")
     print(normalizer.get("houses", {"_id": ObjectId(house_id)}))
+
+    print("\n Inserted myHouses document: ")
+    print(normalizer.get("myHouses", {"_id":ObjectId(user_id)}))
+
 
     #try:
     normalizer.gen_delete("users", user_id) 

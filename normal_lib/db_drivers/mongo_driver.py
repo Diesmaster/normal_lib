@@ -21,13 +21,65 @@ class MongoDriver:
         result = collection.delete_one({"_id": ObjectId(doc_id)})
         return result.deleted_count > 0
 
+    def _split_path(self, path: str):
+        return path.split('.') if path else []
+
+    def _split_head_tail(self, path: str):
+        parts = self._split_path(path)
+        head = parts[0] if parts else ''
+        tail = '.'.join(parts[1:]) if len(parts) > 1 else ''
+        return head, tail
+
+    def _is_dotted(self, key: str):
+        return '.' in key
+
     def modify(self, collection_name, doc_id, updates: dict):
         collection = self.db[collection_name]
+        find = updates.pop("find", None)
+
+        # If there's no find clause, do a plain update
+        if not find:
+            result = collection.update_one(
+                {"_id": ObjectId(doc_id)},
+                {"$set": updates}
+            )
+            return result.modified_count > 0
+
+        # Split dotted and plain updates
+        dotted_updates = {k: v for k, v in updates.items() if self._is_dotted(k)}
+        plain_updates = {k: v for k, v in updates.items() if not self._is_dotted(k)}
+
+        if not dotted_updates:
+            raise ValueError("When using 'find', you must include at least one dotted update field.")
+
+        # Ensure all dotted updates share the same array root (first part of path)
+        array_heads = {self._split_head_tail(k)[0] for k in dotted_updates}
+        if len(array_heads) != 1:
+            raise ValueError(f"All updates with 'find' must target the same array. Got: {array_heads}")
+        array_field = array_heads.pop()  # e.g., 'houses', 'inventory', etc.
+
+        # Build $set update doc
+        set_doc = {}
+        for dotted_key, val in dotted_updates.items():
+            head, tail = self._split_head_tail(dotted_key)
+            if tail == "":
+                raise ValueError(f"Update key '{dotted_key}' must access a nested field inside the array.")
+            set_doc[f"{array_field}.$[elem].{tail}"] = val
+
+        # Translate find into arrayFilters
+        array_filter = {f"elem.{k}": v for k, v in find.items()}
+
+        # Optionally allow non-dotted updates in same operation
+        if plain_updates:
+            set_doc.update(plain_updates)
+
         result = collection.update_one(
             {"_id": ObjectId(doc_id)},
-            {"$set": updates}
+            {"$set": set_doc},
+            array_filters=[array_filter]
         )
-        return result.modified_count > 0
+
+        return result.modified_count > 0   
 
     def add_element_to_array(
         self,

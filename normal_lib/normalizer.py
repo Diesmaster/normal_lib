@@ -121,32 +121,6 @@ class Normalizer:
                         else:
                             self.init_dict(init_doc, original_doc, link, field['name'])
 
-
-                        """
-                        print("no sucess? {original_doc}")
-                        ## deal with hyrarchical init
-                        ret_dict, key = self.find_path(original_doc, self.substring_from_dot(link))
-                        set_value = ret_dict[key]
-
-                        print("we get here: {init_doc}")
-
-                        ret_dict, key = self.find_path(init_doc, field['name'])
-                        if isinstance(ret_dict, list):
-                       
-                            print("we get here: {ret_dict}")
-                            if len(ret_dict) > 0:
-                                if not key in ret_dict[-1]:  
-                                    ret_dict[-1][key] = set_value
-                            
-                                else:
-                                    ret_dict.append({})
-                                    ret_dict[-1][key] = set_value
-                            else:
-                                ret_dict.append({})
-                                ret_dict[-1][key] = set_value
-
-                        print(f"ret_dict: {ret_dict}")
-                        """
                     else:
                         init_doc[self.config[target_col]['fields'][field]['name']] = None
         return init_doc
@@ -191,7 +165,7 @@ class Normalizer:
                 self.add(init, doc, init_doc_id)
 
 
-        ## fix init refs
+        ## prepare inits for the update
         for init in self.ref_dict[collection_name]['inits']:
             elements_to_update = {}
 
@@ -217,6 +191,7 @@ class Normalizer:
 
                             elements_to_update[target_field][attr_name] = set_value 
 
+            ## out updates of inits
             for update in elements_to_update:
                 
                 path = self.config[init]['docId'] 
@@ -242,15 +217,20 @@ class Normalizer:
         doc = {}
 
         for field in updates:
+            print("what are we working with: ")
+            print(self.config[collection_name]['fields'][field])
             if 'link' in self.config[collection_name]['fields'][field] and 'idRef' in self.config[collection_name]['fields'][field]:
                 
                 if doc == {}:
                     doc = self.get_by_id(collection_name, doc_id) 
 
+                print(f"idRef: {self.config[collection_name]['fields'][field]['idRef']}")
                 for i in range(0, len(self.config[collection_name]['fields'][field]['link'])): 
                     link = self.config[collection_name]['fields'][field]['link'][i]
                     idRef = self.config[collection_name]['fields'][field]['idRef'][i]
-                    
+                   
+                    print(f"idRef: {idRef}")
+
                     linked_coll = self.substring_until_dot(link)
 
                     if not linked_coll in gathered_updates:
@@ -261,14 +241,31 @@ class Normalizer:
 
                     target_doc_ids = doc[idRef]
 
+                    if not isinstance(doc[idRef], list):
+                        target_doc_ids = [target_doc_ids]
+
                     for target_doc_id in target_doc_ids:
                         if not target_doc_id in gathered_updates[linked_coll]:            
                             gathered_updates[linked_coll][target_doc_id] = {}
 
                         gathered_updates[linked_coll][target_doc_id][target_field] = value 
 
+
         for col in gathered_updates:
             for target_doc_id in gathered_updates[col]:
+                add = False
+                for key in gathered_updates[col][target_doc_id].keys():
+                    if not self.substring_from_dot(key) == '':
+                        if 'array' in self.config[col]['fields'][self.substring_until_dot(key)]['type']:
+                            add = True
+                            break
+                    else:
+                        break
+                
+                if add == True:
+                    gathered_updates[col][target_doc_id]['find'] = {f'{collection_name}DocId': doc_id}
+
+                print(f"collection: {col}, target_doc_id: {target_doc_id}, update: {gathered_updates[col][target_doc_id]}")
                 res.append(self.modify(col, target_doc_id, gathered_updates[col][target_doc_id]))
 
         return res
