@@ -74,6 +74,8 @@ if __name__ == "__main__":
     print("\n📄 Inserted house document:")
     print(normalizer.get("houses", {"_id": ObjectId(house_id)}))
 
+    print("\n auto my houses:")
+    print(normalizer.get("myHouses", {"_id":ObjectId(user_id)}))
 
     updates = {"username":"Chris"}
 

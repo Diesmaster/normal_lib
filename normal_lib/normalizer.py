@@ -87,7 +87,9 @@ class Normalizer:
             walk = self.substring_until_dot(path)
             target_dict = target_dict[walk]
             path = self.substring_from_dot(path)
-            
+           
+            if isinstance(target_dict, list):
+                return target_dict, path
 
         return target_dict, path
 
@@ -161,6 +163,7 @@ class Normalizer:
         
         doc_id = self.add(collection_name, document, doc_id)
 
+        ## add refs
         for ref_key in self.ref_dict[collection_name]['refs']:
             for ref_attr in self.ref_dict[collection_name]['refs'][ref_key]:
 
@@ -176,6 +179,7 @@ class Normalizer:
                     for el_ref_doc_id in ref_doc_id:
                         res = self.add_element_to_array(ref_key, el_ref_doc_id, array_field, doc_id, unique)
 
+        ## init extensions
         for init in self.ref_dict[collection_name]['inits']:
             doc_id_string = self.config[init]['docId']
             ref_coll = self.substring_until_dot(doc_id_string)
@@ -185,6 +189,45 @@ class Normalizer:
                 init_doc_id = self.get_init_doc_id(document, doc_id, attr)
                 doc = self.gen_init_doc(collection_name, init, document)
                 self.add(init, doc, init_doc_id)
+
+
+        ## fix init refs
+        for init in self.ref_dict[collection_name]['inits']:
+            elements_to_update = {}
+
+            for field_key in self.config[init]['fields']:
+                field = self.config[init]['fields'][field_key]
+               
+                if 'link' in field:
+                    
+                    if field['link'] == collection_name and 'array' in field['type']:
+                        elements_to_update[field['name']] = {}
+                    
+                    elif not self.substring_from_dot(field['name']) == '':
+                        target_field = self.substring_until_dot(field['name'])
+
+                        if target_field not in elements_to_update:
+                            elements_to_update[target_field] = {}
+
+                        attr_name = self.substring_from_dot(field['name'])
+
+                        for link in field['link']:
+                            ret_dict, key = self.find_path(document, self.substring_from_dot(link))
+                            set_value = ret_dict[key]
+
+                            elements_to_update[target_field][attr_name] = set_value 
+
+            for update in elements_to_update:
+                
+                path = self.config[init]['docId'] 
+                target_doc_id = document[self.substring_from_dot(path)] 
+                
+                key = f"{collection_name}DocId"
+
+                elements_to_update[update][key] = doc_id
+
+                unique = True
+                self.add_element_to_array(init, target_doc_id, update, elements_to_update[update], unique)
 
         return doc_id       
 
