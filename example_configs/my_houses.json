@@ -52,7 +52,7 @@
         },
         {
             "name":"houses",
-            "init":["myHouses"],
+            "inits":["myHouses"],
             "fields":[
                 {
                     "name":"address",
@@ -91,17 +91,9 @@
         },
         {
             "name":"myHouses",
-            "docId":"users",
+            "docId":"houses.ownedByDocId",
             "fields":
             [
-                {
-                    "name":"userId",
-                    "type":["string"],
-                    "link":["users.name"],
-                    "idRef":["ownedByDocId"],
-                    "independed":false,
-                    "origin":false              
-                },
                 {
                     "name":"houses",
                     "type":["array"],
@@ -109,8 +101,8 @@
                     "revIdRef":["ownedByDocId"]
                 },
                 {
-                    "name":"houses.houseDocId",
-                    "type":["string"]    
+                    "name":"houses.housesDocId",
+                    "type":["string"]
                 },
                 {
                     "name":"houses.address",
@@ -123,7 +115,7 @@
                 {
                     "name":"houses.type",
                     "type":["string"],
-                    "link":["users.name"],
+                    "link":["houses.typeOfHouse"],
                     "idRef":["houses.houseDocId"],
                     "independed":false,
                     "origin":false 

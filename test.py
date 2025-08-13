@@ -50,23 +50,23 @@ if __name__ == "__main__":
     house_id = ""
 
      
-    try:
-        users_class = class_map["users"]
-        user_id = users_class.add(user_data)
-        print(f"✅ Inserted user with ID: {user_id}")
-    except Exception as e:
-        print("❌ Failed to insert user:")
-        print(e)
+    #try:
+    users_class = class_map["users"]
+    user_id = users_class.add(user_data)
+    print(f"✅ Inserted user with ID: {user_id}")
+    #except Exception as e:
+    #    print("❌ Failed to insert user:")
+    #    print(e)
 
 
-    try:
-        users_class = class_map["houses"]
-        house_data['ownedByDocId'] = user_id 
-        house_id = normalizer.gen_add("houses", house_data)  
-        print(f"✅ Inserted user with ID: {house_id}")
-    except Exception as e:
-        print("❌ Failed to insert house:")
-        print(e)
+    #try:
+    users_class = class_map["houses"]
+    house_data['ownedByDocId'] = user_id 
+    house_id = normalizer.gen_add("houses", house_data)  
+    print(f"✅ Inserted house with ID: {house_id}")
+    #except Exception as e:
+    #    print("❌ Failed to insert house:")
+    #    print(e)
 
     print("\n📄 Inserted user document:")
     print(normalizer.get("users", {"_id": ObjectId(user_id)}))

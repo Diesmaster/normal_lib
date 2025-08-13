@@ -25,7 +25,11 @@ class Normalizer:
         return s.split('.', 1)[0]
 
     def substring_from_dot(self, s: str) -> str:
-        return s.split('.', 1)[1]
+        split = s.split('.', 1)
+        if len(split) > 1:
+            return split[1]
+        else:
+            return ''
 
 
     def _init_class_funcs(self):
@@ -63,33 +67,104 @@ class Normalizer:
                             this_coll_refs[linkedCol] = refs 
 
             self.ref_dict[coll] = {}
-            self.ref_dict[coll] = this_coll_refs 
+            self.ref_dict[coll]['refs'] = this_coll_refs 
+            
+            
+            if 'inits' not in self.ref_dict[coll]:
+                self.ref_dict[coll]['inits'] = []
 
-        
-        for col in self.config:
-            if 'docId' in self.config[col]:
-                target_name = self.config[col]['docId']
-                if 'init' in self.ref_dict[target_name]:
-                    self.ref_dict[target_name]['init'].append(col)
-                else:
-                    self.ref_dict[target_name]['init'] = [col]
+            if 'inits' in self.config[coll]:
+                self.ref_dict[coll]['inits'] = self.ref_dict[coll]['inits'] + self.config[coll]['inits']  
+       
+            print(f"REF_DICT: {self.ref_dict}")
 
-    def gen_init_doc(self):
-        pass
 
+    ## HOW TO DEAL WITH ARRAYS???
+
+    ## works bc of reference
+    def find_path(self, target_dict, path):
+        while not self.substring_from_dot(path) == '': 
+            walk = self.substring_until_dot(path)
+            target_dict = target_dict[walk]
+            path = self.substring_from_dot(path)
+            
+
+        return target_dict, path
+
+    def init_dict(self, target_dict, original_doc, link, name):
+        ret_dict, key = self.find_path(original_doc, self.substring_from_dot(link))
+        set_value = ret_dict[key]
+
+        ret_dict, key = self.find_path(target_dict, name)
+        if not isinstance(ret_dict, list):
+            ret_dict[key] = set_value
+
+    def gen_init_doc(self, original_col, target_col, original_doc):
+        init_doc = {}
+        for field_key in self.config[target_col]['fields']:
+            field = self.config[target_col]['fields'][field_key]
+            if 'link' in field:
+                for link in field['link']:
+                    print(f"Link: {link}")
+                    if self.substring_until_dot(link) == original_col:
+                        if self.substring_from_dot(field['name']) == '':
+                            if self.substring_from_dot(link) == '' and 'array' in field['type']:
+                                init_doc[field['name']] = []
+                                continue
+                            if self.substring_from_dot(link) == '' and 'json' in field['type']:
+                                init_doc[field['name']] = {}
+                            else:
+                                attr = self.substring_from_dot(link)
+                                init_doc[field['name']] = original_doc[attr] 
+                        else:
+                            self.init_dict(init_doc, original_doc, link, field['name'])
+
+
+                        """
+                        print("no sucess? {original_doc}")
+                        ## deal with hyrarchical init
+                        ret_dict, key = self.find_path(original_doc, self.substring_from_dot(link))
+                        set_value = ret_dict[key]
+
+                        print("we get here: {init_doc}")
+
+                        ret_dict, key = self.find_path(init_doc, field['name'])
+                        if isinstance(ret_dict, list):
+                       
+                            print("we get here: {ret_dict}")
+                            if len(ret_dict) > 0:
+                                if not key in ret_dict[-1]:  
+                                    ret_dict[-1][key] = set_value
+                            
+                                else:
+                                    ret_dict.append({})
+                                    ret_dict[-1][key] = set_value
+                            else:
+                                ret_dict.append({})
+                                ret_dict[-1][key] = set_value
+
+                        print(f"ret_dict: {ret_dict}")
+                        """
+                    else:
+                        init_doc[self.config[target_col]['fields'][field]['name']] = None
+        return init_doc
+
+
+    def get_init_doc_id(self, doc, doc_id, attr):
+        if attr == 'docId':
+            return doc_id
+        else:
+            return doc[attr] ## later fix to get value for hyrarchical stuff
 
 
     def gen_add(self,  collection_name, document, doc_id=None):
+        
         doc_id = self.add(collection_name, document, doc_id)
-       
-        for ref_key in self.ref_dict[collection_name]:
-            
 
-            for ref_attr in self.ref_dict[collection_name][ref_key]:
-
+        for ref_key in self.ref_dict[collection_name]['refs']:
+            for ref_attr in self.ref_dict[collection_name]['refs'][ref_key]:
 
                 ref_doc_id = document[ref_attr]
-
 
                 array_field = f"{collection_name}{Config.docIdAttrName}"
 
@@ -101,12 +176,15 @@ class Normalizer:
                     for el_ref_doc_id in ref_doc_id:
                         res = self.add_element_to_array(ref_key, el_ref_doc_id, array_field, doc_id, unique)
 
-        if 'init' in self.config[collection_name]:
-            print("HIT?")
-            for col in self.config[collection_name]['init']:
-                print("HIT")
-                self.add(col, {}, doc_id)
-
+        for init in self.ref_dict[collection_name]['inits']:
+            doc_id_string = self.config[init]['docId']
+            ref_coll = self.substring_until_dot(doc_id_string)
+            attr = self.substring_from_dot(doc_id_string)
+           
+            if ref_coll == collection_name:
+                init_doc_id = self.get_init_doc_id(document, doc_id, attr)
+                doc = self.gen_init_doc(collection_name, init, document)
+                self.add(init, doc, init_doc_id)
 
         return doc_id       
 
