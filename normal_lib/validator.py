@@ -30,51 +30,73 @@ class Validator:
             self.fields = raw_fields
             self.fields_dict = {field["name"]: field for field in raw_fields}
 
+    def get_attr(self, doc, name):
+        """
+        Retrieves nested values using dot notation.
+        Returns a single value or list of values (if any segment is a list).
+        """
+        keys = name.split('.')
+        return self._resolve_attr(doc, keys)
+
+    def _resolve_attr(self, current, keys):
+        if not keys:
+            return current
+
+        key = keys[0]
+        rest_keys = keys[1:]
+
+        if isinstance(current, list) and not rest_keys == []:
+            results = []
+            for item in current:
+                try:
+                    resolved = self._resolve_attr(item, keys)
+                    if isinstance(resolved, list):
+                        results.extend(resolved)
+                    else:
+                        results.append(resolved)
+                except KeyError:
+                    pass  # optionally keep or skip missing
+            return results
+
+        if not isinstance(current, dict):
+            raise KeyError(f"Expected dict while resolving '{'.'.join(keys)}', got {type(current).__name__}")
+
+        if key not in current:
+            raise KeyError(f"Missing key '{key}' while resolving '{'.'.join(keys)}'")
+
+        return self._resolve_attr(current[key], rest_keys)
+
     def validate(self, document: dict):
         errors = []
 
-        doc_keys = set(document.keys())
-        expected_keys = set(self.fields_dict.keys())
-
-        # Missing fields
-        for key in expected_keys - doc_keys:
-            errors.append(f"Missing required field: '{key}'")
-
-        # Extra fields
-        for key in doc_keys - expected_keys:
-            errors.append(f"Unexpected field: '{key}' is not defined in schema")
-
-        # Type and nested checks
         for name, field in self.fields_dict.items():
-            if name not in document:
-                continue
-
             expected_types = field.get("type", [])
-            value = document[name]
 
-            if not self._is_valid_type(value, expected_types):
-                errors.append(
-                    f"Invalid type for field '{name}': expected {expected_types}, got {type(value).__name__}"
-                )
+            try:
+                value = self.get_attr(document, name)
+            except KeyError as e:
+                errors.append(f"Missing required field '{name}': {e}")
                 continue
 
-            # Nested dict validation
-            if isinstance(value, dict) and "fields" in field:
-                try:
-                    Validator({"fields": field["fields"]}).validate(value)
-                except ValidationError as e:
-                    errors.append(f"In field '{name}':\n" + str(e))
+            is_dict = False
+            if isinstance(value, list):
+                for element in value:
+                    if isinstance(element, dict):
+                        is_dict == True
 
-            # Array of nested dicts validation
-            if isinstance(value, list) and "fields" in field:
-                for idx, item in enumerate(value):
-                    if not isinstance(item, dict):
-                        errors.append(f"In field '{name}[{idx}]': Expected dict, got {type(item).__name__}")
-                        continue
-                    try:
-                        Validator({"fields": field["fields"]}).validate(item)
-                    except ValidationError as e:
-                        errors.append(f"In field '{name}[{idx}]':\n" + str(e))
+
+            if is_dict == True:
+                for v in value:
+                    if not self._is_valid_type(v, expected_types):
+                        errors.append(
+                            f"Invalid type for field '{name}': expected {expected_types}, got {type(v).__name__}"
+                        )
+            else:
+                if not self._is_valid_type(value, expected_types):
+                    errors.append(
+                        f"Invalid type for field '{name}': expected {expected_types}, got {type(v).__name__}"
+                    )
+ 
 
         if errors:
             raise ValidationError("\n".join(errors))

@@ -49,7 +49,7 @@ class Normalizer:
         for coll in self.config:
             this_coll_refs = {}
             for attr in self.config[coll]['fields']:
-                if 'link' in self.config[coll]['fields'][attr]:
+                if 'link' in self.config[coll]['fields'][attr] and 'idRef' in self.config[coll]['fields'][attr]:
                     for link in self.config[coll]['fields'][attr]['link']:
                         linkedCol = self.substring_until_dot(link)
 
@@ -65,9 +65,20 @@ class Normalizer:
             self.ref_dict[coll] = {}
             self.ref_dict[coll] = this_coll_refs 
 
+        
+        for col in self.config:
+            if 'docId' in self.config[col]:
+                target_name = self.config[col]['docId']
+                if 'init' in self.ref_dict[target_name]:
+                    self.ref_dict[target_name]['init'].append(col)
+                else:
+                    self.ref_dict[target_name]['init'] = [col]
+
+    def gen_init_doc(self):
+        pass
 
 
-       
+
     def gen_add(self,  collection_name, document, doc_id=None):
         doc_id = self.add(collection_name, document, doc_id)
        
@@ -90,6 +101,12 @@ class Normalizer:
                     for el_ref_doc_id in ref_doc_id:
                         res = self.add_element_to_array(ref_key, el_ref_doc_id, array_field, doc_id, unique)
 
+        if 'init' in self.config[collection_name]:
+            print("HIT?")
+            for col in self.config[collection_name]['init']:
+                print("HIT")
+                self.add(col, {}, doc_id)
+
 
         return doc_id       
 
@@ -107,7 +124,7 @@ class Normalizer:
             if 'link' in self.config[collection_name]['fields'][field] and 'idRef' in self.config[collection_name]['fields'][field]:
                 
                 if doc == {}:
-                    doc = self.get_by_id(collection_name, doc_id)[0]
+                    doc = self.get_by_id(collection_name, doc_id) 
 
                 for i in range(0, len(self.config[collection_name]['fields'][field]['link'])): 
                     link = self.config[collection_name]['fields'][field]['link'][i]
@@ -153,8 +170,7 @@ class Normalizer:
                 
                 
                 if doc == {}:
-                    doc = self.get_by_id(collection_name, doc_id)[0]
-
+                    doc = self.get_by_id(collection_name, doc_id)
  
                 for i in range(0, len(self.config[collection_name]['fields'][field]['link'])): 
                     link = self.config[collection_name]['fields'][field]['link'][i]
@@ -205,7 +221,16 @@ class Normalizer:
 
                     elif self.config[linked_coll]['fields'][target_field]['independed'] == False:
                         
-                        target_doc_ids = doc[idRef]
+                        if 'docId' in self.config[linked_coll]:
+                            if collection_name == self.config[linked_coll]['docId']:
+                                target_doc_ids = [doc_id]
+                            else:
+                                ## TODO
+                                pass
+                        else:
+                            target_doc_ids = doc[idRef]
+                        
+
                         if not linked_coll in deletes:
                             deletes[linked_coll] = {}
 
@@ -234,11 +259,12 @@ class Normalizer:
             ids = set()
 
             for ref_id in all_links[col]:
-                if isinstance(doc[ref_id], list):
-                    for target_doc_id in doc[ref_id]:
-                        ids.add(target_doc_id)
-                else:
-                    ids.add(doc[ref_id])
+                if ref_id in doc:
+                    if isinstance(doc[ref_id], list):
+                        for target_doc_id in doc[ref_id]:
+                            ids.add(target_doc_id)
+                    else:
+                        ids.add(doc[ref_id])
 
             for target_doc_id in ids:
                 res.append(self.remove_element_from_array(col, target_doc_id, auto_key, doc_id))

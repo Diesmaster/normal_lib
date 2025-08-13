@@ -7,7 +7,7 @@ from normal_lib.normalizer import Normalizer
 
 if __name__ == "__main__":
     # Load the config
-    reader = ConfigReader("example_configs/3_items_config.json")
+    reader = ConfigReader("example_configs/my_houses.json")
 
     print("🔍 Full Config:")
     config = reader.get_config()
@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
     print("\n🚀 Initializing Normalizer...")
     db = MongoDriver(db_name="testdb")
-    normalizer = Normalizer(db_driver=db, config_path="example_configs/3_items_config.json")
+    normalizer = Normalizer(db_driver=db, config_path="example_configs/my_houses.json")
 
     print("\n📦 ClassFuncs per collection:")
     class_map = normalizer.get_classes()

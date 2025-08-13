@@ -9,6 +9,7 @@ class ConfigReader:
         self.docIdAttrName = Config.docIdAttrName 
         self.file_path = Path(file_path)
         self.config = self._load_config()
+        print(f"raw config: {self.config}")
         self.config_dict = self.get_config()
 
 
@@ -76,7 +77,7 @@ class ConfigReader:
                                 ret_config[col]['fields'][attr]['origin'] = True
 
 
-                elif ('link' in config[key]['fields'][field]) ^ ('idRef' in config[key]['fields'][field]):
+                elif ('link' in config[key]['fields'][field]) ^ ('idRef' in config[key]['fields'][field] or 'revIdRef' in config[key]['fields'][field]):
                     raise ValueError(f"Only link or refId present in field: {field}, in collection: {key}")
 
         return ret_config
@@ -86,6 +87,8 @@ class ConfigReader:
         config = {}
         for collection in self.config.get('collections', []):
             config[collection['name']] = deepcopy(collection)
+
+            print(f"Name: {collection['name']}, config: {config[collection['name']]}")
 
             config[collection['name']]['fields'] = {}
 
