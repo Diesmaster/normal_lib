@@ -331,27 +331,18 @@ class Normalizer:
                             
 
 
-                            #elif isinstance(updates[linked_coll][target_doc_id][target_field], List):
+                            # elif isinstance(updates[linked_coll][target_doc_id][target_field], List):
                             #    pass
-                            ## we need to remove things from the List
+                            # we need to remove things from the List
    
 
 
                     elif self.config[linked_coll]['fields'][target_field]['independed'] == False:
                         
-                        if 'docId' in self.config[linked_coll]:
-                            if collection_name == self.config[linked_coll]['docId']:
-                                target_doc_ids = [doc_id]
-                            else:
-                                ## TODO
-                                pass
-                        else:
-                            target_doc_ids = doc[idRef]
-                        
+                        target_doc_ids = doc[idRef]
 
                         if not linked_coll in deletes:
                             deletes[linked_coll] = {}
-
 
                         for target_doc_id in target_doc_ids:
                             deletes[linked_coll][target_doc_id] = True
@@ -359,12 +350,33 @@ class Normalizer:
                     else:    
                         return "exception TODO"   
 
+        for col in self.config:
+            if 'docId' in self.config[col]:
+                check_col = self.substring_until_dot(self.config[col]['docId'])
+                check_attr = self.substring_from_dot(self.config[col]['docId'])
+
+                print(f"col: {self.config[check_col]['fields'][check_attr]}")
+
+
+                if collection_name in self.config[check_col]['fields'][check_attr]['link']:
+                    
+                    if col not in deletes:
+                        deletes[col] = {}
+
+                    for idRef in self.config[check_col]['fields'][check_attr]['revIdRef']:
+                        if idRef == 'docId':
+                            deletes[col][doc_id] = True
+                        else:
+                            deletes[col][doc[idRef]] = True
+
         res = []
 
         for col in updates:
             for target_doc_id in updates[col]:
                 res.append(self.modify(col, target_doc_id, updates[col][target_doc_id]))
 
+
+        ### how to deal with deletes??? user gets deleted -> the houses of user get deleted -> myHouses need to be deleted too 
 
         for col in deletes:
             for target_doc_id in deletes[col]:

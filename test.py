@@ -102,4 +102,7 @@ if __name__ == "__main__":
     print("\n📄 deleted house document:")
     print(normalizer.get("houses", {"_id": ObjectId(house_id)}))
 
+    print("\n Inserted myHouses document: ")
+    print(normalizer.get("myHouses", {"_id":ObjectId(user_id)}))
+
 

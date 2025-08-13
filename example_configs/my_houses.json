@@ -85,7 +85,11 @@
                 },
                 {
                     "name":"ownedByDocId",
-                    "type":["string"]
+                    "type":["string"],
+                    "link":["users"],
+                    "revIdRef":["docId"],
+                    "independed":false,
+                    "origin":false
                 }
             ]
         },
