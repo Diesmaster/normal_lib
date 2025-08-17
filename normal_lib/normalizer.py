@@ -76,7 +76,6 @@ class Normalizer:
             if 'inits' in self.config[coll]:
                 self.ref_dict[coll]['inits'] = self.ref_dict[coll]['inits'] + self.config[coll]['inits']  
        
-            print(f"REF_DICT: {self.ref_dict}")
 
 
     ## HOW TO DEAL WITH ARRAYS???
@@ -107,7 +106,6 @@ class Normalizer:
             field = self.config[target_col]['fields'][field_key]
             if 'link' in field:
                 for link in field['link']:
-                    print(f"Link: {link}")
                     if self.substring_until_dot(link) == original_col:
                         if self.substring_from_dot(field['name']) == '':
                             if self.substring_from_dot(link) == '' and 'array' in field['type']:
@@ -162,9 +160,10 @@ class Normalizer:
             if ref_coll == collection_name:
                 init_doc_id = self.get_init_doc_id(document, doc_id, attr)
                 doc = self.gen_init_doc(collection_name, init, document)
-                self.add(init, doc, init_doc_id)
-
-
+                
+                if (test := self.get_by_id(init, init_doc_id)) == None:
+                    self.add(init, doc, init_doc_id)
+                
         ## prepare inits for the update
         for init in self.ref_dict[collection_name]['inits']:
             elements_to_update = {}
@@ -217,20 +216,15 @@ class Normalizer:
         doc = {}
 
         for field in updates:
-            print("what are we working with: ")
-            print(self.config[collection_name]['fields'][field])
             if 'link' in self.config[collection_name]['fields'][field] and 'idRef' in self.config[collection_name]['fields'][field]:
                 
                 if doc == {}:
                     doc = self.get_by_id(collection_name, doc_id) 
 
-                print(f"idRef: {self.config[collection_name]['fields'][field]['idRef']}")
                 for i in range(0, len(self.config[collection_name]['fields'][field]['link'])): 
                     link = self.config[collection_name]['fields'][field]['link'][i]
                     idRef = self.config[collection_name]['fields'][field]['idRef'][i]
                    
-                    print(f"idRef: {idRef}")
-
                     linked_coll = self.substring_until_dot(link)
 
                     if not linked_coll in gathered_updates:
@@ -265,7 +259,6 @@ class Normalizer:
                 if add == True:
                     gathered_updates[col][target_doc_id]['find'] = {f'{collection_name}DocId': doc_id}
 
-                print(f"collection: {col}, target_doc_id: {target_doc_id}, update: {gathered_updates[col][target_doc_id]}")
                 res.append(self.modify(col, target_doc_id, gathered_updates[col][target_doc_id]))
 
         return res
@@ -354,8 +347,6 @@ class Normalizer:
             if 'docId' in self.config[col]:
                 check_col = self.substring_until_dot(self.config[col]['docId'])
                 check_attr = self.substring_from_dot(self.config[col]['docId'])
-
-                print(f"col: {self.config[check_col]['fields'][check_attr]}")
 
 
                 if collection_name in self.config[check_col]['fields'][check_attr]['link']:
