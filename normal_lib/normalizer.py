@@ -12,6 +12,7 @@ class Normalizer:
         config_path: path to a .json config file
         """
         self.ref_dict = {}
+        self.delete_dict = {}
         self.config_reader = ConfigReader(config_path)
         self.config = self.config_reader.get_config()
         print(f"conv: {self.config}")
@@ -19,6 +20,7 @@ class Normalizer:
         self.interface = DBInterface(db_driver, self.config)
         self._collection_classes = self._init_class_funcs()
         self.create_adds()
+        self.create_deletes()
 
 
     def substring_until_dot(self, s: str) -> str:
@@ -266,18 +268,161 @@ class Normalizer:
 
         return res
 
+    def init_delete_dict(self, target_col, target_attr, col):
+        if not target_col in self.delete_dict:
+            self.delete_dict[target_col] = {}
+
+        if not col in self.delete_dict[target_col]:
+            self.delete_dict[target_col][col] = {}
+
+        if not target_attr in self.delete_dict[target_col][col]:
+            self.delete_dict[target_col][col][target_attr] = {}
+
+
+
+    def find_my_link(self, link, this_col):
+        
+        from_col = ''
+        from_attr = ''
+        stop = False
+        ret_link = None
+
+
+        while stop == False:
+            for el_link in link:
+                
+                ## find the real origin:
+                from_col = self.substring_until_dot(el_link)
+                from_attr = self.substring_from_dot(el_link)
+
+                if from_col == this_col:
+                    
+                    if from_attr == '':
+                        ret_link = 'docId'
+                    else:
+                        ret_link = from_attr
+
+
+                    stop = True
+                    break
+
+                if from_attr == '':
+                    stop = True
+                    break
+
+                from_field = self.config[from_col]['fields'][from_attr]
+
+                if not 'link' in from_field:
+                    stop = True
+                    break
+                else:
+                    paths = from_field['link']
+
+        return ret_link
+
+
+
+
+    def create_deletes(self):
+        
+        print(self.delete_dict)
+
+        for col in self.config:
+            for field_name in self.config[col]['fields']:
+                field = self.config[col]['fields'][field_name]
+
+                if 'link' in field and 'idRef' in field:
+                    if field['origin'] == False:
+                        ## init other lib
+                        for link in field['link']:
+                            
+                            target_col = self.substring_until_dot(link)
+                            target_attr = self.substring_from_dot(link)
+                            self.init_delete_dict(target_col, target_attr, col)
+
+                            self.delete_dict[target_col][col][target_attr]['delete'] = True
+                            self.delete_dict[target_col][col][target_attr]['independed'] = field['independed'] 
+
+                            if 'docId' not in self.config[col]:
+                                self.delete_dict[target_col][col][target_attr]['idRef'] = f'{col}{Config.docIdAttrName}' 
+                            else:
+
+                                search = [self.config[col]['docId']]
+
+                                link = self.find_my_link(search, target_col)
+                                if link == None:
+                                    return 'err'
+
+                                self.delete_dict[target_col][col][target_attr]['idRef'] = link 
+
+
+                            ## we need to get the reverse one 
+
+            if 'docId' in self.config[col]:
+                
+                paths = [self.config[col]['docId']]
+
+                from_col = ''
+                from_attr = ''
+                refId = ''
+                stop = False
+
+                while stop == False: 
+                    for path in paths:
+                        ## find the real origin:
+                        from_col = self.substring_until_dot(path)
+                        from_attr = self.substring_from_dot(path)
+
+                        if from_attr == '':
+                            stop = True
+                            break
+    
+                        from_field = self.config[from_col]['fields'][from_attr]
+
+                        if 'refId' in from_field:
+                            refId = from_field[refId]
+
+                        elif 'revIdRef' in from_field:
+                            refId = from_field['revIdRef']
+
+                        if not 'link' in from_field:
+                            stop = True
+                            break
+                        else:
+                            paths = from_field['link']
+                            print(paths)
+
+
+                if not from_attr == '': 
+
+                    self.init_delete_dict(from_col, from_attr, col)
+                    self.delete_dict[from_col][col][from_attr] = {}                
+
+                    self.delete_dict[from_col][col][from_attr]['delete'] = True
+                    self.delete_dict[from_col][col][from_attr]['independed'] = False 
+                    self.delete_dict[from_col][col]['refId'] = refId 
+
+                else:
+                    if from_col not in self.delete_dict:
+                        self.delete_dict[from_col] = {}
+
+                    if col not in self.delete_dict[from_col]:
+                        self.delete_dict[from_col][col] = {}
+
+                    self.delete_dict[from_col][col]['delete'] = True 
+                    self.delete_dict[from_col][col]['independed'] = True
+                    
+                    self.delete_dict[from_col][col]['refId'] = refId 
+
     def gen_delete(self, collection_name, doc_id):
-        ## when to remove ref
-        ## when to delete doc that refs?
-
-        ## if independed == True remove the data 
-        ## if independed == False remove the doc
-
         doc = {}
         updates = {}
         deletes = {}
         all_links = {}
 
+        print(f"#####")
+        print(f"delete dict: {self.delete_dict}")
+        print(f"#####")
 
         for field in self.config[collection_name]['fields']:
             if 'link' in self.config[collection_name]['fields'][field] and 'idRef' in self.config[collection_name]['fields'][field] and 'origin' in self.config[collection_name]['fields'][field]:                
