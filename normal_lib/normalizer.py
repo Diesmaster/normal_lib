@@ -139,7 +139,10 @@ class Normalizer:
         for ref_key in self.ref_dict[collection_name]['refs']:
             for ref_attr in self.ref_dict[collection_name]['refs'][ref_key]:
 
-                ref_doc_id = document[ref_attr]
+                ref_doc_id = doc_id
+
+                if not ref_attr == "docId":
+                    ref_doc_id = document[ref_attr]
 
                 array_field = f"{collection_name}{Config.docIdAttrName}"
 
@@ -348,17 +351,18 @@ class Normalizer:
                 check_col = self.substring_until_dot(self.config[col]['docId'])
                 check_attr = self.substring_from_dot(self.config[col]['docId'])
 
+                if not check_attr == 'docId':
+                    if 'link' in self.config[check_col]['fields'][check_attr]:
+                        if collection_name in self.config[check_col]['fields'][check_attr]['link']:
+                            
+                            if col not in deletes:
+                                deletes[col] = {}
 
-                if collection_name in self.config[check_col]['fields'][check_attr]['link']:
-                    
-                    if col not in deletes:
-                        deletes[col] = {}
-
-                    for idRef in self.config[check_col]['fields'][check_attr]['revIdRef']:
-                        if idRef == 'docId':
-                            deletes[col][doc_id] = True
-                        else:
-                            deletes[col][doc[idRef]] = True
+                            for idRef in self.config[check_col]['fields'][check_attr]['revIdRef']:
+                                if idRef == 'docId':
+                                    deletes[col][doc_id] = True
+                                else:
+                                    deletes[col][doc[idRef]] = True
 
         res = []
 

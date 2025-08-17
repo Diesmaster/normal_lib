@@ -29,6 +29,7 @@ class ConfigReader:
         """
         Splits a string like 'users.username' into ('users', 'username')
         """
+        print(f"LINK: {link}")
         if not isinstance(link, str) or '.' not in link:
             raise ValueError("Link must be a string in 'collection.attribute' format.")
         collection, attribute = link.split('.', 1)
