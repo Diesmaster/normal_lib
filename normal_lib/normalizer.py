@@ -331,20 +331,25 @@ class Normalizer:
             for field_name in self.config[col]['fields']:
                 field = self.config[col]['fields'][field_name]
 
-                if 'link' in field and 'idRef' in field:
+                if 'link' in field: 
                     if field['origin'] == False:
                         ## init other lib
                         for link in field['link']:
                             
                             target_col = self.substring_until_dot(link)
                             target_attr = self.substring_from_dot(link)
-                            self.init_delete_dict(target_col, target_attr, col)
+                            name = field['name']
+                            
+                            
+                            self.init_delete_dict(target_col, name, col)
 
-                            self.delete_dict[target_col][col][target_attr]['delete'] = True
-                            self.delete_dict[target_col][col][target_attr]['independed'] = field['independed'] 
+                            self.delete_dict[target_col][col][name]['delete'] = True
+                            self.delete_dict[target_col][col][name]['independed'] = field['independed'] 
+                            self.delete_dict[target_col][col][name]['type'] = field['type']
+                            
 
                             if 'docId' not in self.config[col]:
-                                self.delete_dict[target_col][col][target_attr]['idRef'] = f'{col}{Config.docIdAttrName}' 
+                                self.delete_dict[target_col][col][name]['idRef'] = f'{col}{Config.docIdAttrName}' 
                             else:
 
                                 search = [self.config[col]['docId']]
@@ -353,10 +358,8 @@ class Normalizer:
                                 if link == None:
                                     return 'err'
 
-                                self.delete_dict[target_col][col][target_attr]['idRef'] = link 
+                                self.delete_dict[target_col][col][name]['idRef'] = link 
 
-
-                            ## we need to get the reverse one 
 
             if 'docId' in self.config[col]:
                 
@@ -399,7 +402,7 @@ class Normalizer:
                     self.delete_dict[from_col][col][from_attr] = {}                
 
                     self.delete_dict[from_col][col][from_attr]['delete'] = True
-                    self.delete_dict[from_col][col][from_attr]['independed'] = False 
+                    self.delete_dict[from_col][col][from_attr]['independed'] = self.config[col][from_attr]['independed'] 
                     self.delete_dict[from_col][col]['refId'] = refId 
 
                 else:
@@ -410,7 +413,7 @@ class Normalizer:
                         self.delete_dict[from_col][col] = {}
 
                     self.delete_dict[from_col][col]['delete'] = True 
-                    self.delete_dict[from_col][col]['independed'] = True
+                    self.delete_dict[from_col][col]['independed'] = False 
                     
                     self.delete_dict[from_col][col]['refId'] = refId 
 

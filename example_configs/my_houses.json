@@ -102,7 +102,9 @@
                     "name":"houses",
                     "type":["array"],
                     "link":["houses"],
-                    "revIdRef":["ownedByDocId"]
+                    "revIdRef":["ownedByDocId"],
+                    "independed":true,
+                    "origin":false
                 },
                 {
                     "name":"houses.housesDocId",
@@ -113,7 +115,7 @@
                     "type":["string"],
                     "link":["houses.address"],
                     "idRef":["houses.houseDocId"],
-                    "independed":false,
+                    "independed":true,
                     "origin":false               
                 },
                 {
@@ -121,7 +123,7 @@
                     "type":["string"],
                     "link":["houses.typeOfHouse"],
                     "idRef":["houses.houseDocId"],
-                    "independed":false,
+                    "independed":true,
                     "origin":false 
                 }
             ]
