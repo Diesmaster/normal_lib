@@ -3,6 +3,7 @@
     "collections": [
         {
             "name":"users",
+            "inits":["myHouses"],
             "fields":[
                 {
                     "name":"username",
@@ -52,7 +53,6 @@
         },
         {
             "name":"houses",
-            "inits":["myHouses"],
             "fields":[
                 {
                     "name":"address",
@@ -71,7 +71,7 @@
                     "type":["string"],
                     "link":["users.username"],
                     "idRef":["ownedByDocId"],
-                    "independed":true,
+                    "independed":false,
                     "origin":false
 
                 },

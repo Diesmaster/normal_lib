@@ -52,7 +52,7 @@ if __name__ == "__main__":
      
     #try:
     users_class = class_map["users"]
-    user_id = users_class.add(user_data)
+    user_id = normalizer.gen_add('users', user_data)
     print(f"✅ Inserted user with ID: {user_id}")
     #except Exception as e:
     #    print("❌ Failed to insert user:")
@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
 
     #try:
-    normalizer.gen_delete("users", user_id) 
+    normalizer.gen_delete("houses", house_id) 
     #except Exception as e:
     #    print(f"err: {e}")
 
