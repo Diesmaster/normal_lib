@@ -87,7 +87,7 @@
                     "name":"ownedByDocId",
                     "type":["string"],
                     "link":["users"],
-                    "revIdRef":["docId"],
+                    "revIdRef":["housesDocIds"],
                     "independed":false,
                     "origin":false
                 }
@@ -114,16 +114,16 @@
                     "name":"houses.address",
                     "type":["string"],
                     "link":["houses.address"],
-                    "idRef":["houses.houseDocId"],
-                    "independed":true,
+                    "idRef":["houses.housesDocId"],
+                    "independed":false,
                     "origin":false               
                 },
                 {
                     "name":"houses.type",
                     "type":["string"],
                     "link":["houses.typeOfHouse"],
-                    "idRef":["houses.houseDocId"],
-                    "independed":true,
+                    "idRef":["houses.housesDocId"],
+                    "independed":false,
                     "origin":false 
                 }
             ]

@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
 
     #try:
-    normalizer.gen_delete("houses", house_id) 
+    normalizer.gen_delete("users", user_id) 
     #except Exception as e:
     #    print(f"err: {e}")
 

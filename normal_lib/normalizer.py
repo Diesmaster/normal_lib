@@ -21,6 +21,9 @@ class Normalizer:
         self.interface = DBInterface(db_driver, self.config)
         self._collection_classes = self._init_class_funcs()
         self.create_adds()
+
+        ## if col inits always delete doc
+        ## otherwise check
         self.create_deletes()
 
 
@@ -234,7 +237,6 @@ class Normalizer:
     def gen_add(self,  collection_name, document, doc_id=None):
        
 
-        print(f"adds dict: {self.ref_dict}")
         print(f"adds dict: {self.add_dict}")
 
         doc_id = self.add(collection_name, document, doc_id)
@@ -256,12 +258,11 @@ class Normalizer:
                 self.add(init, doc, init_doc_id)
 
 
-        ## can only update arrays
+        ## can only update arrays fill with the correct values
         updates = {}
         for target_col in self.add_dict[collection_name]['updates']:
             updates[target_col] = {}
             for target_attr in self.add_dict[collection_name]['updates'][target_col]:
-                print(target_attr)
                 idRefs = self.add_dict[collection_name]['updates'][target_col][target_attr]["idRef"]
                 
                 if 'link' in self.add_dict[collection_name]['updates'][target_col][target_attr]:
@@ -292,11 +293,6 @@ class Normalizer:
                                     
 
                                 updates[target_col][target_doc_id][parent][kid] = document[this_attr]
-
-
-        print(f"#####")
-        print(f"updates: \n {updates} ")
-        print(f"#####")
 
         unique = True
 
@@ -424,102 +420,127 @@ class Normalizer:
 
 
     def create_deletes(self):
+
+        print(self.delete_dict)
+
+        ###
+        ## deletes dict should have a delete and an update subfield for every col
+        ###
+
+
+        for col in self.config:
+
+
+            self.delete_dict[col] = {}
+            self.delete_dict[col]['deletes'] = {}
+            self.delete_dict[col]['updates'] = {}
+
+            if 'inits' in self.config[col]:
+                
+                self.delete_dict[col]['deletes'] = {}
+
+                for init in self.config[col]['inits']:
+                    self.delete_dict[col]['deletes'][init] = {}
+                    
+                    search = [self.config[init]['docId']]
+
+                    link = self.find_my_link(search, col)
+                    if link == None:
+                        return 'err'
+
+                    self.delete_dict[col]['deletes'][init]['idRef'] = [link]
+                    self.delete_dict[col]['deletes'][init]['independed'] = False
+                    self.delete_dict[col]['deletes'][init]['origin'] = False
+
+
+            
         for col in self.config:
             for field_name in self.config[col]['fields']:
                 field = self.config[col]['fields'][field_name]
 
                 if 'link' in field: 
                     if field['origin'] == False:
-                        ## init other lib
-                        for link in field['link']:
-                            
-                            target_col = self.substring_until_dot(link)
-                            target_attr = self.substring_from_dot(link)
-                            name = field['name']
+                        ## handle independed field case
+                        if field['independed'] == False: 
+                            ## now handle nested vs unested
+                            substring = self.substring_until_dot(field['name'])
                             
                             
-                            self.init_delete_dict(target_col, name, col)
+                            if not self.substring_from_dot(field['name']) == '':
+                                if 'array' in self.config[col]['fields'][substring]['type']:
 
-                            self.delete_dict[target_col][col][name]['delete'] = True
-                            self.delete_dict[target_col][col][name]['independed'] = field['independed'] 
-                            self.delete_dict[target_col][col][name]['type'] = field['type']
+                                    ## this is nested arr stuff
+                                    for link in field['link']:
+                                    
+                                        target_col = self.substring_until_dot(link)
+                                        target_attr = self.substring_from_dot(link)
+                                       
+                                        if target_attr == '':
+                                            target_attr = 'docId'
+                                            
+                                        
+                                        revId = self.config[col]['fields'][substring]['revIdRef']
+
+                                        
+                                        if not col in self.delete_dict[target_col]['updates']: 
+                                            self.delete_dict[target_col]['updates'][col] = {}
                             
-
-                            if 'docId' not in self.config[col]:
-                                self.delete_dict[target_col][col][name]['idRef'] = f'{col}{Config.docIdAttrName}' 
-                            else:
-
-                                search = [self.config[col]['docId']]
-
-                                link = self.find_my_link(search, target_col)
-                                if link == None:
-                                    return 'err'
-
-                                self.delete_dict[target_col][col][name]['idRef'] = link 
+                                        if not substring in self.delete_dict[target_col]['updates'][col]:
+                                            self.delete_dict[target_col]['updates'][col][substring] = {}
 
 
-            if 'docId' in self.config[col]:
-                
-                paths = [self.config[col]['docId']]
+                                        else:
+                                            continue
 
-                from_col = ''
-                from_attr = ''
-                refId = ''
-                stop = False
+                                        self.delete_dict[target_col]['updates'][col][substring]['idRef'] = revId 
+                                        self.delete_dict[target_col]['updates'][col][substring]['find_in_attr'] = field['idRef']
+                                        
+                                        self.delete_dict[target_col]['updates'][col][substring]['find_element'] = 'docId'
+                                        self.delete_dict[target_col]['updates'][col][substring]['independed'] = False
+                                        self.delete_dict[target_col]['updates'][col][substring]['origin'] = False
 
-                while stop == False: 
-                    for path in paths:
-                        ## find the real origin:
-                        from_col = self.substring_until_dot(path)
-                        from_attr = self.substring_from_dot(path)
+                                    continue 
 
-                        if from_attr == '':
-                            stop = True
-                            break
-    
-                        from_field = self.config[from_col]['fields'][from_attr]
+                                    
+                            
+                            for link in field['link']:
+                                
+                                target_col = self.substring_until_dot(link)
+                                target_attr = self.substring_from_dot(link)
+                               
+                                if target_attr == '':
+                                    target_attr = ['docId']
 
-                        if 'refId' in from_field:
-                            refId = from_field[refId]
+                                if 'revIdRef' in field:
+                                    target_attr = field['revIdRef']
 
-                        elif 'revIdRef' in from_field:
-                            refId = from_field['revIdRef']
+                                self.delete_dict[target_col]['deletes'][col] = {}
+                                self.delete_dict[target_col]['deletes'][col]['idRef'] = target_attr
+                                self.delete_dict[target_col]['deletes'][col]['independed'] = False
+                                self.delete_dict[target_col]['deletes'][col]['origin'] = False
+                        
+                        elif field['independed'] == True:
+                           
+                            for link in field['link']:
+                                if not self.substring_from_dot(link) == '':
+                                    if not col in self.delete_dict[target_col]['updates']: 
+                                        self.delete_dict[target_col]['updates'][col] = {}
+                                    
+                                    if field['name'] not in self.delete_dict[target_col]['updates'][col]:
+                                        self.delete_dict[target_col]['updates'][col][field['name']] = {}
+                                   
+                                    idRefKey = f"{col}DocIds"
 
-                        if not 'link' in from_field:
-                            stop = True
-                            break
-                        else:
-                            paths = from_field['link']
-                            print(paths)
+                                    self.delete_dict[target_col]['updates'][col][field['name']]['independed'] = True
+                                    self.delete_dict[target_col]['updates'][col][field['name']]['idRef'] = [idRefKey] 
+                                    self.delete_dict[target_col]['updates'][col][field['name']]['origin'] = False
 
-
-                if not from_attr == '': 
-
-                    self.init_delete_dict(from_col, from_attr, col)
-                    self.delete_dict[from_col][col][from_attr] = {}                
-
-                    self.delete_dict[from_col][col][from_attr]['delete'] = True
-                    self.delete_dict[from_col][col][from_attr]['independed'] = self.config[col][from_attr]['independed'] 
-                    self.delete_dict[from_col][col]['refId'] = refId 
-
-                else:
-                    if from_col not in self.delete_dict:
-                        self.delete_dict[from_col] = {}
-
-                    if col not in self.delete_dict[from_col]:
-                        self.delete_dict[from_col][col] = {}
-
-                    if 'docId' not in self.delete_dict[from_col][col]:
-                        self.delete_dict[from_col][col]['docId'] = {} 
-
-                    self.delete_dict[from_col][col]['docId']['delete'] = True 
-                    self.delete_dict[from_col][col]['docId']['independed'] = False 
-                    
-                    self.delete_dict[from_col][col]['docId']['refId'] = refId 
-
+                            
+                                    
     def gen_delete(self, collection_name, doc_id):
         doc = {}
-        updates = {}
+        update_field = {}
+        update_array = {} 
         deletes = {}
         all_links = {}
 
@@ -528,187 +549,93 @@ class Normalizer:
         print(f"#####")
 
         deletes[collection_name] = {}
-        deletes[collection_name][doc_id] = {}
-        deletes[collection_name][doc_id]['delete'] = True
-        deletes[collection_name]['idRefs'] = []
 
-        if doc == {}:
-            doc = self.get_by_id(collection_name, doc_id)
- 
+        deletes[collection_name][doc_id] = True    
 
-        ## to fix need to fix init logic first
+        effect = self.delete_dict[collection_name]
 
-        for col in self.delete_dict[collection_name]:
+        doc = self.get_by_id(collection_name, doc_id)
+
+        print(f"eff: {effect}")
+
+        for delete_col in effect['deletes']:
+            print(f"del: {delete_col}")
             
-            if col not in deletes:
-                deletes[col] = {}
-                deletes[col]['idRefs'] = []
+            deletes[delete_col] = {}
 
-            for attr_key in self.delete_dict[collection_name][col]:
+            for idRef in effect['deletes'][delete_col]['idRef']:
+                target_ids = self.get_init_doc_id(doc, doc_id, idRef)
                 
-                del_attr = self.delete_dict[collection_name][col][attr_key]
-                
-                if not isinstance(del_attr, dict):
-                    continue
+                if not isinstance(target_ids, list):
+                    target_ids = [target_ids]
 
-                if del_attr['independed'] == False:
-                    target_docIds = []
+                for target_id in target_ids:
+                    deletes[delete_col][target_id] = True
 
-                    if attr_key == 'docId':
-                        if 'docId' not in deletes[col]['idRefs']:
-                            target_docIds.append(doc_id)
-                            deletes[col]['idRefs'].append('docId')
+
+
+        for update_col in effect['updates']:
+            for update_attr in effect['updates'][update_col]:
+
+                if 'find_element' in effect['updates'][update_col][update_attr]:
+                    
+                    if update_col not in update_array:
+                        update_array[update_col] = {}
+
+
+                    effecting = effect['updates'][update_col][update_attr] 
+                    
+                    target_doc_ids = []
+                    for idRef in effecting['idRef']:
                         
-                    else:
-                        refId_key = del_attr['idRef']
+                        target = doc[idRef]
 
-                        if refId_key not in deletes[col]['idRefs']:
-                            
-                            deletes[col]['idRefs'].append(refId_key)
+                        if not isinstance(target, list):
+                            target = [target]
 
-                            temp_ids = doc[refId_key]   
+                        target_doc_ids = target_doc_ids + target
 
-                            if isinstance(temp_ids, str):
-                                target_docIds.append(temp_ids)
-                            elif isinstance(temp_ids, list):
-                                target_docIds = target_docIds + temp_ids
-
-                    for docId in target_docIds:
-                        if docId not in deletes[col]:
-                            deletes[col][docId] = {}
-
-                        deletes[col][docId]['delete'] = True
-
-
-        print(deletes)
-        ## actual deletes:
-        for col in deletes:
-            for target_attr in deletes[col]:
-                if not isinstance(deletes[col][target_attr], dict):
-                    continue
-
-                self.delete(col, target_attr)
-
-        """
-        for field in self.config[collection_name]['fields']:
-            if 'link' in self.config[collection_name]['fields'][field] and 'idRef' in self.config[collection_name]['fields'][field] and 'origin' in self.config[collection_name]['fields'][field]:                
                 
-                
-                if doc == {}:
-                    doc = self.get_by_id(collection_name, doc_id)
- 
-                for i in range(0, len(self.config[collection_name]['fields'][field]['link'])): 
-                    link = self.config[collection_name]['fields'][field]['link'][i]
-                    idRef = self.config[collection_name]['fields'][field]['idRef'][i]
+                    for target_doc_id in target_doc_ids:
+                        
+                        if target_doc_id not in update_array[update_col]:
+                            update_array[update_col][target_doc_id] = {}
+                        
+                        if update_attr not in update_array[update_col][target_doc_id]:
+                            update_array[update_col][target_doc_id][update_attr] = {}
+                        
                          
-                    linked_coll = self.substring_until_dot(link)
-                    target_field = self.substring_from_dot(link)
+                        target_value = self.get_init_doc_id(doc, doc_id, effecting['find_element']) 
 
-                    if not linked_coll in all_links:
-                        all_links[linked_coll] = {}
+                        update_array[update_col][target_doc_id][update_attr]['find_element'] = target_value 
 
-                    if not idRef in all_links[linked_coll]:
-                        all_links[linked_coll][idRef] = True
+                        update_array[update_col][target_doc_id][update_attr]['find_in_attr'] = effecting['find_in_attr']
 
-
-                    if self.config[collection_name]['fields'][field]['origin'] == False:
-                        continue
-
-                    if not linked_coll in updates:
-                        updates[linked_coll] = {}
+                else:
+                    pass
 
 
+        print(f"arr updates {update_array}")
+        print(f"field updates {update_field}")
+        print(f"deletes {deletes}")
 
-                    if self.config[linked_coll]['fields'][target_field]['independed'] == True:
-                        
-                        if not linked_coll in updates:
-                            updates[linked_coll] = {}
+        for update_col in update_array:
+            for update_doc_id in update_array[update_col]:
+                for update_field in update_array[update_col][update_doc_id]:
+                    element = update_array[update_col][update_doc_id][update_field]['find_element']
+                    element_attr = update_array[update_col][update_doc_id][update_field]['find_in_attr']
 
-                        target_doc_ids = doc[idRef]
+                    condition = {}
 
-                        for target_doc_id in target_doc_ids:
-                            if not target_doc_id in updates[linked_coll]:            
-                                updates[linked_coll][target_doc_id] = {}
+                    for attr in element_attr:
+                        name_attr = self.substring_from_dot(attr)
+                        condition[name_attr] = element
+                   
+                    self.remove_element_from_array(update_col, update_doc_id, update_field, condition)
 
-                            #if not isinstance(updates[linked_coll][target_doc_id][target_field], List):
-                            updates[linked_coll][target_doc_id][target_field] = None
-                            ref_fields = self.config[linked_coll]['fields'][target_field]['idRef']     
-                            for ref_field in ref_fields:
-                                updates[linked_coll][target_doc_id][ref_field] = None
-                            
-
-
-                            # elif isinstance(updates[linked_coll][target_doc_id][target_field], List):
-                            #    pass
-                            # we need to remove things from the List
-   
-
-
-                    elif self.config[linked_coll]['fields'][target_field]['independed'] == False:
-                        
-                        target_doc_ids = doc[idRef]
-
-                        if not linked_coll in deletes:
-                            deletes[linked_coll] = {}
-
-                        for target_doc_id in target_doc_ids:
-                            deletes[linked_coll][target_doc_id] = True
-
-                    else:    
-                        return "exception TODO"   
-
-        for col in self.config:
-            if 'docId' in self.config[col]:
-                check_col = self.substring_until_dot(self.config[col]['docId'])
-                check_attr = self.substring_from_dot(self.config[col]['docId'])
-
-                if not check_attr == 'docId':
-                    if 'link' in self.config[check_col]['fields'][check_attr]:
-                        if collection_name in self.config[check_col]['fields'][check_attr]['link']:
-                            
-                            if col not in deletes:
-                                deletes[col] = {}
-
-                            for idRef in self.config[check_col]['fields'][check_attr]['revIdRef']:
-                                if idRef == 'docId':
-                                    deletes[col][doc_id] = True
-                                else:
-                                    deletes[col][doc[idRef]] = True
-
-        res = []
-
-        for col in updates:
-            for target_doc_id in updates[col]:
-                res.append(self.modify(col, target_doc_id, updates[col][target_doc_id]))
-
-
-        ### how to deal with deletes??? user gets deleted -> the houses of user get deleted -> myHouses need to be deleted too 
-
-        for col in deletes:
-            for target_doc_id in deletes[col]:
-                if deletes[col][target_doc_id] == True:
-                    res.append(self.delete(col, target_doc_id))
-
-        auto_key = f"{collection_name}{Config.docIdAttrName}"
-
-        for col in all_links:
-            ids = set()
-
-            for ref_id in all_links[col]:
-                if ref_id in doc:
-                    if isinstance(doc[ref_id], list):
-                        for target_doc_id in doc[ref_id]:
-                            ids.add(target_doc_id)
-                    else:
-                        ids.add(doc[ref_id])
-
-            for target_doc_id in ids:
-                res.append(self.remove_element_from_array(col, target_doc_id, auto_key, doc_id))
-
-        res.append(self.delete(collection_name, doc_id))
-
-        return res
-        """
+        for delete_col in deletes:
+            for delete_doc_id in deletes[delete_col]:
+                self.delete(delete_col, delete_doc_id)
 
     def add(self, collection_name, document, doc_id=None):
         return self.interface.add(collection_name, document, doc_id)
