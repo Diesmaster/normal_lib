@@ -62,6 +62,9 @@ class ConfigReader:
 
                     for link in config[key]['fields'][field]['link']:
                         col, attr = self.parse_string_link(link)
+                        
+                        print(f"{config[col]['fields']}")
+                        print(f"col: {col}, attr: {attr}")
 
                         if not 'link' in config[col]['fields'][attr]:
                             ret_config[col]['fields'][attr]['link'] = []

@@ -619,6 +619,8 @@ class Normalizer:
         print(f"field updates {update_field}")
         print(f"deletes {deletes}")
 
+        rets = []
+
         for update_col in update_array:
             for update_doc_id in update_array[update_col]:
                 for update_field in update_array[update_col][update_doc_id]:
@@ -631,11 +633,14 @@ class Normalizer:
                         name_attr = self.substring_from_dot(attr)
                         condition[name_attr] = element
                    
-                    self.remove_element_from_array(update_col, update_doc_id, update_field, condition)
+                    rets.append(self.remove_element_from_array(update_col, update_doc_id, update_field, condition))
 
         for delete_col in deletes:
             for delete_doc_id in deletes[delete_col]:
-                self.delete(delete_col, delete_doc_id)
+                
+                rets.append(self.delete(delete_col, delete_doc_id))
+
+        return rets
 
     def add(self, collection_name, document, doc_id=None):
         return self.interface.add(collection_name, document, doc_id)

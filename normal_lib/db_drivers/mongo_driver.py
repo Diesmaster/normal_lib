@@ -18,7 +18,12 @@ class MongoDriver:
     
     def delete(self, collection_name, doc_id):
         collection = self.db[collection_name]
+
+        if doc_id is not None:
+            doc_id = ObjectId(doc_id) if ObjectId.is_valid(str(doc_id)) else str(doc_id)
+
         result = collection.delete_one({"_id": ObjectId(doc_id)})
+
         return result.deleted_count > 0
 
     def _split_path(self, path: str):
